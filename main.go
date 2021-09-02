@@ -44,7 +44,7 @@ func chrand(a []int, num int, c chan int) {
 			if a[i] == num {
 				e := myError{err: "random repeated on element: " + strconv.Itoa(i), num: num}
 				fmt.Println(e.Error())
-				rand.Seed(time.Now().UnixNano())
+				rand.Seed(time.Now().UnixNano()) //new random pool
 				num = rand.Intn(cap(a)) + 1
 				i = 0
 			}
