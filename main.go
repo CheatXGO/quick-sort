@@ -21,13 +21,13 @@ func main() {
 	pls := time.Now()
 	var b = 10 // capacity
 	var a = make([]int, 0, b)
-	var us string
+	c := make(chan int)
 	for i := 0; i < b; i++ {
 		num := rand.Intn(b) + 1
-		a = append(a, <-chrand(a, num))
-		us = us + strconv.Itoa(a[i]) + " "
+		chrand(a, num, c)
+		a = append(a, <-c)
 	}
-	fmt.Println("Random result: ", us)
+	fmt.Println("Random result: ", a)
 	defer fmt.Println("Process time: ", time.Since(pls))
 	err := qsort(a)
 	if err != nil {
@@ -35,10 +35,10 @@ func main() {
 	} else {
 		fmt.Println("Sorting result: ", a)
 	}
+	defer close(c)
 }
 
-func chrand(a []int, num int) chan int {
-	c := make(chan int)
+func chrand(a []int, num int, c chan int) {
 	go func() {
 		for i := 0; i < len(a); i++ {
 			if a[i] == num {
@@ -50,9 +50,7 @@ func chrand(a []int, num int) chan int {
 			}
 		}
 		c <- num
-		close(c)
 	}()
-	return c
 }
 
 func qsort(a []int) error {
