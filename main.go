@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
-	"strconv"
+	"sync"
 	"time"
 )
 
@@ -18,39 +18,52 @@ func (e *myError) Error() string {
 }
 
 func main() {
+	var wg sync.WaitGroup
 	pls := time.Now()
-	var b = 10 // capacity
+	var b = 20 // capacity
 	var a = make([]int, 0, b)
-	c := make(chan int)
+	var d = make([]int, b, b)
 	for i := 0; i < b; i++ {
 		num := rand.Intn(b) + 1
-		chrand(a, num, c)
-		a = append(a, <-c)
+		a = append(a, chrand(a, num))
 	}
+	copy(d, a)
 	fmt.Println("Random result: ", a)
-	defer fmt.Println("Process time: ", time.Since(pls))
-	err := qsort(a)
-	if err != nil {
-		fmt.Println(err)
-	} else {
-		fmt.Println("Sorting result: ", a)
-	}
-	defer close(c)
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		err := qsort(a)
+		if err != nil {
+			fmt.Println(err)
+		} else {
+			fmt.Println("Quick sorting result: ", a)
+		}
+		fmt.Println("Quick time: ", time.Since(pls))
+	}()
+	go func() {
+		defer wg.Done()
+		err := bubblesort(d)
+		if err != nil {
+			fmt.Println(err)
+		} else {
+			fmt.Println("Bubble sorting result: ", d)
+		}
+		fmt.Println("Bubble time: ", time.Since(pls))
+	}()
+	wg.Wait()
 }
 
-func chrand(a []int, num int, c chan int) {
-	go func() {
-		for i := 0; i < len(a); i++ {
-			if a[i] == num {
-				e := myError{err: "random repeated on element: " + strconv.Itoa(i), num: num}
-				fmt.Println(e.Error())
-				rand.Seed(time.Now().UnixNano()) //new random pool
-				num = rand.Intn(cap(a)) + 1
-				i = 0
-			}
+func chrand(a []int, num int) int {
+	for i := 0; i < len(a); i++ {
+		if a[i] == num {
+			/*e := myError{err: "random repeated on element: " + strconv.Itoa(i), num: num}
+			fmt.Println(e.Error())*/
+			rand.Seed(time.Now().UnixNano()) //new random pool
+			num = rand.Intn(cap(a)) + 1
+			i = 0
 		}
-		c <- num
-	}()
+	}
+	return num
 }
 
 func qsort(a []int) error {
@@ -73,10 +86,25 @@ func qsort(a []int) error {
 			right--
 		}
 	}
-	fmt.Println("After sort: ", a)
+	//fmt.Println("After sort: ", a)
 	if left <= len(a)-1 {
 		qsort(a[:left])
 		qsort(a[left:])
+	}
+	return nil
+}
+
+func bubblesort(d []int) error {
+	if len(d) < 2 {
+		return errors.New("Slice have less than 2 elements")
+	}
+	for i := 0; i < len(d)-1; i++ {
+		for j := 0; j < len(d)-1; j++ {
+			if d[j] > d[j+1] {
+				d[j], d[j+1] = d[j+1], d[j]
+				j--
+			}
+		}
 	}
 	return nil
 }
